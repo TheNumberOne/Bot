@@ -1,3 +1,4 @@
+
 function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 	
 	var myId = 32700;
@@ -11,8 +12,8 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 	var chosenMove;
 
 
-    const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1]];
-    const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
+	const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1]];
+	const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
 
 	function utfToDec( charCode ) {
 		return charCode.charCodeAt() - 174;
