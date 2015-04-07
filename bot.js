@@ -1,111 +1,8 @@
 
 function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 	
-	var myId = 32700;
-	var twinId = 10766;
-	var moveParity = move % 2;
-	var moves={
-			'-1':{'-1':4,'0':0,'1':3},
-			'0':{'-1':2,'0':0,'1':1},
-			'1':{'-1':5,'0':0,'1':6}
-	};
-	var chosenMove;
-
-
-	const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1]];
-	const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
-
-	function utfToDec( charCode ) {
-		return charCode.charCodeAt() - 174;
-	}
-	function decToUtf( character ) {
-		return String.fromCharCode( character + 174 );
-	}
-
-	function addEnemy(enemy){
-		var i,e;
-		for (i = 0; i < eNear.length; i++) {
-			e = eNear[i];
-			if (enemy.x == e.x && enemy.y == e.y) {
-				return;
-			}
-			if (enemy.id == e.id){
-				enemy.id++;
-				addEnemy(enemy); //I'm lazy :)
-				return;
-			}
-		}
-		eNear.push(enemy);
-	}
-
-	function distance(x1, y1, x2, y2){
-		return (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
-	}
-
-	function mergeSort(array,compare) {//http://stackoverflow.com/a/7730507/4230423
-
-		var length = this.length,
-		middle = Math.floor(length / 2);
-
-		if (!compare) {
-			compare = function(left, right) {
-				if (left < right){
-					return -1;
-				}
-				if (left == right){
-					return 0;
-				}
-				return 1;
-			};
-		}
-
-		if (length < 2){
-			return array;
-		}
-
-		return merge(
-				mergeSort(array.slice(0, middle), compare),
-				mergeSort(array.slice(middle, length), compare),
-				compare);
-	}
-
-	function merge(left, right, compare) {
-
-		var result = [];
-
-		while (left.length > 0 || right.length > 0) {
-			if (left.length > 0 && right.length > 0) {
-				if (compare(left[0], right[0]) <= 0) {
-					result.push(left[0]);
-					left = left.slice(1);
-				} else {
-					result.push(right[0]);
-					right = right.slice(1);
-				}
-			} else if (left.length > 0) {
-				result.push(left[0]);
-				left = left.slice(1);
-			} else if (right.length > 0) {
-				result.push(right[0]);
-				right = right.slice(1);
-			}
-		}
-		return result;
-	}
-
-	function setMessage(){
-		var m = "";
-		m += decToUtf(x + chosenMove[0]);
-		m += decToUtf(y + chosenMove[1]);
-		m += moveParity;
-		for (var i = 0; i < allEnemies.length && m.length < 60; i++){
-			var enemy = allEnemies[i];
-			m += decToUtf(enemy.id / 256) + decToUtf(enemy.id % 256);
-			m += decToUtf(enemy.x, enemy.y);
-		}
-	}
-
-	function surveillance(){
+	
+	var surveillance = function(){
 
 		for (var i = 0; i < tNear.length; i++){
 			var friend = tNear[i];
@@ -181,11 +78,152 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 				} catch (e){}
 			}
 		}
-	}
+	};
 
 	surveillance();
 
-	if (getMsg(twinId) == ""){
+	var utfToDec = function(character) {
+	    return character.charCodeAt() - 174;
+	};
+
+	var decToUtf = function(character) {
+	    return String.fromCharCode(character + 174);
+	};
+	
+	var findDangerousEnemies = function() {
+		var dangerous = [];
 		
+		for (var i = 0; i < eNear.length - 1; i++) {
+			for (var j = i + 1; j < eNear.length; j++) {
+				if (eNear[i].x == eNear[j].x && Math.abs(eNear[i].y - eNear[j].y) == 1){
+					dangerous.push(eNear[i], eNear[j]);
+					eNear[i].buddy = eNear[j];
+					eNear[j].buddy = eNear[i];
+					eNear[i].dangerous = true;
+					eNear[j].dangerous = true;
+				}
+			}
+		}
+		
+		return dangerous;
+	};
+
+	var moveToward = function(allowedMoves, pieceX, pieceY) {
+	    var bestMove = 0;
+	    var xDifference = Math.abs(x - pieceX);
+	    var yDifference = Math.abs(y - pieceY);
+
+	    var currentDistance = Math.sqrt(Math.pow(xDifference, 2) + Math.pow(yDifference, 2));
+
+	    for (var i = 0; i < moveSet.length; i++) {
+	    	if (!allowedMoves[i]){
+	    		continue;
+	    	}
+	        var newDistancePair = [Math.abs(x + moveSet[i][0] - pieceX), Math.abs(y + moveSet[i][1] - pieceY)];
+
+	        var newDistance = Math.sqrt(Math.pow(newDistancePair[0], 2) + Math.pow(newDistancePair[1], 2));
+
+	        if(currentDistance > newDistance)
+	        {
+	            bestMove = i;
+	            currentDistance = newDistance;
+	        }
+	    }
+	    return bestMove;
+	};
+
+	var canKillEnemy = function(moveSet) {
+	    for (var enemy in eNear) {
+	        for (var i = 1; i < moveSet.length; i++) {
+	            if (x == enemy.x && y == enemy.y) {
+	                return i;
+	            }
+	        }
+	    }
+	    return -1;
+	};
+
+	var enemyCanKillAtPos = function(moveSig) {
+	    for (var enemy in eNear) {
+	        if (x + moveSet[moveSig][0] == enemy.x && y + moveSet[moveSig][1] == enemy.y) {
+	            return true;
+	        }
+	    }
+	    return false;
+	};
+	
+	var setMessage = function() {
+		setMsg(decToUtf(x) + decToUtf(y) + parity + position);
+	};
+	
+	var normalizeMove = function(move) {
+		if (move > 5){
+			position = position == "R" ? "L" : "R";
+			if (move == 6){
+				if (position == "L"){
+					return 5;
+				} else {
+					return 6;
+				}
+			} else {
+				if (position == "L"){
+					return 4;
+				} else {
+					return 3;
+				}
+			}
+		}
+	};
+	
+	var pickTarget = function(joined) {
+		var dangerous = findDangerousEnemies();
+		if (joined && dangerous.length > 0) {
+			var best = dangerous[0];
+			for (var enemy in dangerous){
+				if (distance(best.x, best.y, x, y) > distance(enemy.x - enemy.y, x, y)){
+					best = enemy;
+				}
+			}
+			return best;
+		}
+	};
+
+	var buddyBot = 38926, me = 32700;
+	var parity = move % 2;
+	var position = "R";
+	var combined = false;
+	
+	const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1], [0, 1], [0, -1]];
+	const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
+
+	var message = getMsg(buddyBot);
+	
+	if (!message) {
+		var safe = [1, 1, 1, 1, 1, 1, 0, 0];
+		for (var i = 0; i < 6; i++){
+			if (!enemyCanKillAtPos(i)){
+				setMessage();
+				return normalizeMove(i);
+			}
+		}
+		return 0;
+	} else if (message == "X"){
+		var safe = [1, 1, 1, 1, 1, 1, 0, 0];
+		var target = pickTarget(false);
 	}
+
+	var buddyX = utfToDec(message[0]);
+	var buddyY = utfToDec(message[1]);
+	var buddyParity = parseInt(message[2]);
+	var buddyOrientation = message.substring(3, 4);
+
+	var canKill = canKillEnemy(moveSet);
+	if (canKill != -1) {
+	    return canKill;
+	}
+
+	var bestMove = getMove(moveSet, buddyX, buddyY);
+
+	return bestMove;
+	
 }
