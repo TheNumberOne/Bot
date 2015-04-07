@@ -1,4 +1,13 @@
+
 function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
+    
+    var buddyBot = 38926, me = 32700;
+    var parity = move % 2;
+    var position = "R";
+    var combined = false;
+
+    const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1], [0, 1], [0, -1]];
+    const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
 
 
     var addEnemy = function(enemy){		
@@ -130,7 +139,7 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 
         var currentDistance = Math.sqrt(Math.pow(xDifference, 2) + Math.pow(yDifference, 2));
 
-        for (var i = 0; i < moveSet.length; i++) {
+        for (var i = 1; i < moveSet.length; i++) {
             if (!allowedMoves[i]){
                 continue;
             }
@@ -168,10 +177,12 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
     };
 
     var setMessage = function(chosenMove) {
-        var normalized = normalizedMove(chosenMove);
+        var normalized = normalizeMove(chosenMove);
         if (normalized != chosenMove){
             position = position == "R" ? "L" : "R";
         }
+        console.log(normalized);
+        console.log(moveSet);//undefined? Needs debugging.
         x += moveSet[normalized][0];
         y += moveSet[normalized][1];
 
@@ -218,18 +229,48 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         }
         return best;
     };
-
-    var buddyBot = 38926, me = 32700;
-    var parity = move % 2;
-    var position = "R";
-    var combined = false;
-
-    const moveSet = [[0, 0], [1, 0], [-1, 0], [1, -1], [-1, -1], [-1, 1], [1, 1], [0, 1], [0, -1]];
-    const enemyMoveSet = [[0, 0], [0, 1], [0, -1], [1, -1], [-1, -1], [-1, 1], [1, 1]];
+    
+    var moveTowardEnemy = function(target){ //Only use when joined.
+        var leftX = x;
+        var leftY = y;
+        if (position == "R"){
+            leftX--;
+        }
+        var rightX = leftX + 1;
+        var rightY = leftY;
+            
+        var targetX = target.x;
+        var targetY = target.y;
+        
+        var safe = [1, 1, 1, 1, 1, 1, 1, 1];
+        
+        for (var i = 0; i < 8; i++){
+            for (var enemy in eNear) {
+                if (enemy.dangerous && Math.abs(target.y - enemy.y) <= 1 && target.x == enemy.x) {//Enable approach to Sph3000 bots.
+                    continue;
+                }
+                if ((leftX + moveSet[i][0] == enemy.x && leftY + moveSet[i][1] == enemy.y) ||
+                        (rightX + moveSet[i][0] == enemy.x && rightY + moveSet[i][1] == enemy.y)){
+                    safe[i] = 0;
+                }
+            }
+        }
+        
+        //TODO
+        
+        
+    };
+    
+    var searchPattern = function(){
+        return {
+            x:128,
+            y:128
+            };
+    };
 
     var message = getMsg(buddyBot);
 
-    if (!message) {
+    if (message == "") {
         var safe = [1, 1, 1, 1, 1, 1, 0, 0];
         for (var i = 0; i < 6; i++){
             if (!enemyCanKillAtPos(i)){
@@ -237,8 +278,9 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
                 return normalizeMove(i);
             }
         }
+        setMessage();
         return 0;
-    } else if (message == "X"){
+    } else /*if (!message || message == "X")*/{
         var safe = [1, 1, 1, 1, 1, 1, 0, 0];
         var target;
         if (eNear.length == 0){
@@ -251,19 +293,22 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
                 safe[i] = 0;
             }
         }
+        console.log(safe);
         var chosenMove = moveToward(safe, target.x, target.y);
         setMessage(chosenMove);
         return normalizeMove(chosenMove);		
-    } else {
+    }/* else {
 
         var buddyX = utfToDec(message[0]);
         var buddyY = utfToDec(message[1]);
         var buddyParity = parseInt(message[2]);
-        var buddyOrientation = message.substring(3, 4);
+        var buddyPosition = message.substring(3, 4);
+        
+        
 
-
+        //TODO
     }
 
-    return bestMove;
+    return bestMove;*/
 
 }
