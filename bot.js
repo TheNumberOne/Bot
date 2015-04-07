@@ -1,6 +1,21 @@
-
 function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 	
+	
+	var addEnemy = function(enemy){		
+		var i,e;		
+		for (i = 0; i < eNear.length; i++) {		
+			e = eNear[i];		
+			if (enemy.x == e.x && enemy.y == e.y) {		
+				return;		
+			}		
+			if (enemy.id == e.id){		
+				enemy.id++;		
+				addEnemy(enemy); //I'm lazy :)		
+				return;		
+			}		
+		}		
+		eNear.push(enemy);		
+	};
 	
 	var surveillance = function(){
 
