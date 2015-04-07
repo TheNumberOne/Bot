@@ -1,4 +1,3 @@
-
 function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 	
 	
@@ -262,7 +261,7 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 		var buddyParity = parseInt(message[2]);
 		var buddyOrientation = message.substring(3, 4);
 
-		
+		//TODO
 	}
 
 	return bestMove;
