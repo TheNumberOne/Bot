@@ -143,7 +143,7 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
 
         var currentDistance = Math.sqrt(Math.pow(xDifference, 2) + Math.pow(yDifference, 2));
 
-        for (var i = 1; i < moveSet.length; i++) {
+        for (var i = 0; i < moveSet.length; i++) {
             if (!allowedMoves[i]){
                 continue;
             }
@@ -185,8 +185,6 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         if (normalized != chosenMove){
             position = position == "R" ? "L" : "R";
         }
-        console.log(normalized);
-        console.log(moveSet);//undefined? Needs debugging.
         x += moveSet[normalized][0];
         y += moveSet[normalized][1];
 
@@ -194,14 +192,14 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
     };
 
     var normalizeMove = function(move) {
-        if (move > 5){
-            if (move == 6){
+        if (move > 6){
+            if (move == 7){
                 if (position == "R"){
                     return 5;
                 } else {
                     return 6;
                 }
-            } else {
+            } else { //move == 8
                 if (position == "R"){
                     return 4;
                 } else {
@@ -268,8 +266,8 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
     
     var searchPattern = function(){
         return {
-            x:128,
-            y:128
+            x:64,
+            y:64
             };
     };
 
@@ -283,10 +281,10 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
                 return normalizeMove(i);
             }
         }
-        setMessage();
+        setMessage(0);
         return 0;
-    } else /*if (!message || message == "X")*/{
-        var safe = [1, 1, 1, 1, 1, 1, 0, 0];
+    } else if (!message || message == "X"){
+        var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
         var target;
         if (eNear.length == 0){
             target = searchPattern();
@@ -298,22 +296,49 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
                 safe[i] = 0;
             }
         }
-        console.log(safe);
-        var chosenMove = moveToward(safe, target.x, target.y);
+        var chosenMove = moveToward(safe, target.x, target.y);//Not the best targetting.
         setMessage(chosenMove);
         return normalizeMove(chosenMove);		
-    }/* else {
+    } else {
 
-        var buddyX = utfToDec(message[0]);
+        /*var buddyX = utfToDec(message[0]);
         var buddyY = utfToDec(message[1]);
         var buddyParity = parseInt(message[2]);
-        var buddyPosition = message.substring(3, 4);
-        
+        var buddyPosition = message.substring(3, 4);*/
         
 
-        //TODO
+
+        var buddyX = parseInt(message.substring(0, 3), 10);
+        var buddyY = parseInt(message.substring(4, 7), 10);
+        var buddyParity = parity == 0 ? 1 : 0;
+        var buddyPosition = "L";
+        
+        position = buddyPosition == "L" ? "R" : "L";
+        
+        var neededPosition = [position == "L" ? buddyX - 1 : buddyX + 1, buddyY];
+        
+        if (parity == buddyParity || x != neededPosition[0] || y != neededPosition[1]) {
+            if ((Math.abs(neededPosition[0] - x) == 1 && Math.abs(neededPosition[1] - y) <= 1) || 
+                    (neededPosition[0] == x && neededPosition[1] == y)) {
+                var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
+                var chosenMove = moveToward(safe, neededPosition[0], neededPosition[1]);
+                setMessage[chosenMove];
+                return normalizeMove(chosenMove);
+            } else {
+                var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
+                for (var i = 0; i < 6; i++){
+                    if (enemyCanKillAtPos(i)){
+                        safe[i] = 0;
+                    }
+                }
+                var chosenMove = moveToward(safe, neededPosition[0], neededPosition[1]);
+                setMessage(chosenMove);
+                return chosenMove;
+            }
+        }
+        
+        return Math.floor(Math.random() * 7);
+        
     }
-
-    return bestMove;*/
 
 }
