@@ -16,12 +16,7 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
             e = eNear[i];		
             if (enemy.x == e.x && enemy.y == e.y) {		
                 return;		
-            }		
-            if (enemy.id == e.id){		
-                enemy.id++;		
-                addEnemy(enemy); //I'm lazy :)		
-                return;		
-            }		
+            }
         }		
         eNear.push(enemy);		
     };
@@ -118,40 +113,26 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         return String.fromCharCode(character + 174);
     };
 
-    var findDangerousEnemies = function() {
-        var dangerous = [];
-
-        for (var i = 0; i < eNear.length - 1; i++) {
-            for (var j = i + 1; j < eNear.length; j++) {
-                if (eNear[i].x == eNear[j].x && Math.abs(eNear[i].y - eNear[j].y) == 1){
-                    dangerous.push(eNear[i], eNear[j]);
-                    eNear[i].buddy = eNear[j];
-                    eNear[j].buddy = eNear[i];
-                    eNear[i].dangerous = true;
-                    eNear[j].dangerous = true;
-                }
-            }
-        }
-
-        return dangerous;
-    };
-
     var moveToward = function(allowedMoves, pieceX, pieceY) {
         var bestMove = 0;
-        var xDifference = Math.abs(x - pieceX);
-        var yDifference = Math.abs(y - pieceY);
 
-        var currentDistance = Math.sqrt(Math.pow(xDifference, 2) + Math.pow(yDifference, 2));
+        var currentDistance = [Infinity, Infinity];
 
         for (var i = 0; i < moveSet.length; i++) {
             if (!allowedMoves[i]){
                 continue;
             }
-            var newDistancePair = [Math.abs(x + moveSet[i][0] - pieceX), Math.abs(y + moveSet[i][1] - pieceY)];
+            
+            var newX = x + moveSet[i][0];
+            var newY = y + moveSet[i][1];
 
-            var newDistance = Math.sqrt(Math.pow(newDistancePair[0], 2) + Math.pow(newDistancePair[1], 2));
+            if (newX == -1 || newX == 128 || newY == -1 || newY == 128) {
+                continue;
+            }
+            
+            var newDistance = [Math.abs(newX - pieceX), Math.abs(newY - pieceY)];
 
-            if(currentDistance > newDistance)
+            if(newDistance[1] < currentDistance[1] || (newDistance[1] == currentDistance[1] && newDistance[0] < currentDistance[0]))
             {
                 bestMove = i;
                 currentDistance = newDistance;
@@ -171,13 +152,62 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         return -1;
     };
 
-    var enemyCanKillAtPos = function(moveSig) {
+    var enemyCanKillAtPos = function(moveSig, joined, ignoreSphi) {
         for (var enemy in eNear) {
-            if (x + moveSet[moveSig][0] == enemy.x && y + moveSet[moveSig][1] == enemy.y) {
-                return true;
+            for (var enemyMove in enemyMoveSet){
+            
+                var enemyX = enemy.x + enemyMove[0];
+                var enemyY = enemy.y + enemyMove[1];
+            
+                if (joined){
+                    
+                    if (ignoreSphi && (enemy.id == 2867 || enemy.id == 21487)){
+                        continue;
+                    }
+                    
+                    var leftX = position == "R" ? x - 1 : x;
+                    var leftY = y;
+                    
+                    leftX += moveSet[moveSig][0];
+                    leftY += moveSet[moveSig][1];
+                    
+                    var rightX = leftX + 1;
+                    
+                    if ((leftX == enemyX || rightX == enemyX) && leftY == enemyY){
+                        return true;
+                    }
+                } else if (x + moveSet[moveSig][0] == enemyX && y + moveSet[moveSig][1] == enemyY) {
+                    return true;
+                }
             }
         }
         return false;
+    };
+    
+    var moveTowardEnemy = function(safe, targetX, targetY){
+        
+        var best = 0;
+        
+        var currentDistances = [Infinity, Infinity];
+
+        for (var i = 1; i < moveSet.length; i++) {
+            
+            if (!safe[i]){
+                continue;
+            }
+            
+            var adjustedX = x + moveSet[i][0];
+            var adjustedY = y + moveSet[i][1];
+            
+            var distances = [Math.abs(targetX - adjustedX), Math.abs(targetY - adjustedY)];
+            
+            if (distances[1] < currentDistances[1] || (distances[1] == currentDistances[1] && ((distances[1] == 0) ^ (distances[0] > currentDistances[0])))){
+                best = i;
+                currentDistances = distances;
+            }
+        }
+        
+        return best;
     };
 
     var setMessage = function(chosenMove) {
@@ -189,6 +219,8 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         y += moveSet[normalized][1];
 
         setMsg(decToUtf(x) + decToUtf(y) + parity + position);
+        
+        return normalized;
     };
 
     var normalizeMove = function(move) {
@@ -233,87 +265,95 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
         return best;
     };
     
-    var moveTowardEnemy = function(target){ //Only use when joined.
-        var leftX = x;
-        var leftY = y;
-        if (position == "R"){
-            leftX--;
-        }
-        var rightX = leftX + 1;
-        var rightY = leftY;
-            
-        var targetX = target.x;
-        var targetY = target.y;
-        
-        var safe = [1, 1, 1, 1, 1, 1, 1, 1];
-        
-        for (var i = 0; i < 8; i++){
-            for (var enemy in eNear) {
-                if (enemy.dangerous && Math.abs(target.y - enemy.y) <= 1 && target.x == enemy.x) {//Enable approach to Sph3000 bots.
-                    continue;
-                }
-                if ((leftX + moveSet[i][0] == enemy.x && leftY + moveSet[i][1] == enemy.y) ||
-                        (rightX + moveSet[i][0] == enemy.x && rightY + moveSet[i][1] == enemy.y)){
-                    safe[i] = 0;
-                }
-            }
-        }
-        
-        //TODO
-        
-        
-    };
-    
     var searchPattern = function(){
-        return {
-            x:64,
-            y:64
-            };
+        var minosMessage = getMsg(38926);
+
+        if (minosMessage != "X") {
+            var minosX = parseInt(message.substring(0, 3), 10);
+            var minosY = parseInt(message.substring(4, 7), 10);
+
+            return {x:minosX, y:minosY};
+        }
+
+        if (x == 11 && y == 123) {
+            restartPatrol = true;
+        }
+
+        if (x == 11 && y == 11) {
+            restartPatrol = false;
+        }
+
+        if (restartPatrol) {
+            return {x:11, y:11};
+        }
+
+        if ((x == 11 && y in [27, 59, 91, 123]) || 
+            (x == 123 && y in [11, 43, 75, 107])) {
+            return {x:x, y:y + 1};
+        }
+
+        if (y in [11, 43, 75, 107] && x > 11 && x < 116) {
+            return {x:x + 1, y:y};
+        }
+
+        if (y in [27, 59, 91, 123] && x > 11 && x < 116) {
+            return {x:x - 1, y:y};
+        }
+
+        if (x in [11, 123]) {
+            return {x:x, y:y + 1};
+        }
     };
 
     var message = getMsg(buddyBot);
 
     if (message == "") {
-        var safe = [1, 1, 1, 1, 1, 1, 0, 0];
-        for (var i = 0; i < 6; i++){
-            if (!enemyCanKillAtPos(i)){
-                setMessage(i);
-                return normalizeMove(i);
+        var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
+        for (var i = 1; i < 7; i++){
+            if (!enemyCanKillAtPos(i, false, false)){
+                return setMessage(i);      
             }
         }
-        setMessage(0);
-        return 0;
+        return setMessage(0);
     } else if (!message || message == "X"){
         var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
         var target;
         if (eNear.length == 0){
             target = searchPattern();
+            var chosenMove = moveToward(safe, target.x, target.y);
+            return setMessage(chosenMove);      
         } else {
             target = pickTarget(false);
         }
-        for (var i = 0; i < 6; i++){
-            if (enemyCanKillAtPos(i)){
+        if (canKillEnemy() != -1){
+            var chosenMove = canKillEnemy();
+            return setMessage(chosenMove);
+        }
+        
+        
+        for (var i = 0; i < 7; i++){
+            if (enemyCanKillAtPos(i, false, false)){
                 safe[i] = 0;
             }
         }
-        var chosenMove = moveToward(safe, target.x, target.y);//Not the best targetting.
-        setMessage(chosenMove);
-        return normalizeMove(chosenMove);		
+        var chosenMove = moveTowardEnemy(safe, target.x, target.y);
+        return setMessage(chosenMove);		
     } else {
 
-        /*var buddyX = utfToDec(message[0]);
+        var buddyX = utfToDec(message[0]);
         var buddyY = utfToDec(message[1]);
         var buddyParity = parseInt(message[2]);
-        var buddyPosition = message.substring(3, 4);*/
-        
+        var buddyPosition = message.substring(3, 4);
 
-
-        var buddyX = parseInt(message.substring(0, 3), 10);
+        /*var buddyX = parseInt(message.substring(0, 3), 10);
         var buddyY = parseInt(message.substring(4, 7), 10);
         var buddyParity = parity == 0 ? 1 : 0;
-        var buddyPosition = "L";
+        var buddyPosition = "L";*/
         
         position = buddyPosition == "L" ? "R" : "L";
+        
+        var leftX = position == "L" ? x : x - 1;
+        var leftY = y;
         
         var neededPosition = [position == "L" ? buddyX - 1 : buddyX + 1, buddyY];
         
@@ -322,22 +362,90 @@ function moveMe(move, x, y, tCount, eCount, tNear, eNear, setMsg, getMsg) {
                     (neededPosition[0] == x && neededPosition[1] == y)) {
                 var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
                 var chosenMove = moveToward(safe, neededPosition[0], neededPosition[1]);
-                setMessage[chosenMove];
-                return normalizeMove(chosenMove);
+                return setMessage(chosenMove);
             } else {
                 var safe = [1, 1, 1, 1, 1, 1, 1, 0, 0];
-                for (var i = 0; i < 6; i++){
-                    if (enemyCanKillAtPos(i)){
+                for (var i = 0; i < 7; i++){
+                    if (enemyCanKillAtPos(i, false, false)){
                         safe[i] = 0;
                     }
                 }
                 var chosenMove = moveToward(safe, neededPosition[0], neededPosition[1]);
-                setMessage(chosenMove);
-                return chosenMove;
+                return setMessage(chosenMove);
             }
         }
         
-        return Math.floor(Math.random() * 7);
+        var safe = [1, 1, 1, 1, 1, 1, 1, 1, 1];
+        
+        var canFindSphi = false;
+        var isWhole = false;
+        var sphiTopX = 0;
+        var sphiTopY = 0;
+        
+        for (var enemy in eNear){
+            if (enemy.id == 2867 || enemy.id == 21487) {
+                if (enemy.x == sphiTopX && enemy.y == sphiTopY){
+                    continue;
+                }
+                if (canFindSphi){
+                    isWhole = true;
+                }
+                canFindSphi = true;
+                sphiTopX = enemy.x;
+                sphiTopY = Math.min(enemy.y, sphiTopY);
+            }
+        }
+        
+        if (canFindSphi) {
+            var deltaX = sphiTopX - leftX;
+            var deltaY = sphiTopY - leftY;
+            
+            if (deltaX >= -1 && deltaX <= 2 && (isWhole ? deltaY >= -2 && deltaY <= 1 : Math.abs(deltaY) <= 1)) { // Kill sphi!!!!
+                var enemyX = sphiTopX;
+                var enemyY;
+                if (deltaY == -2){
+                    enemyY = sphiTopY + 1;
+                } else {
+                    enemyY = sphiTopY;
+                }
+                var chosenMove = moveToward(safe, enemyX, enemyY);
+                return setMessage(chosenMove);
+            }
+            
+            for (var i = 0; i < safe.length; i++){
+                if (enemyCanKillAtPos(i, true, true)){
+                    safe[i] = 0;
+                }
+            }
+            var chosenMove = moveTowardEnemy(safe, sphiTopX, sphiTopY);
+            return setMessage(chosenMove);
+        }
+        
+        for (var i = 0; i < safe.length; i++){
+            if (enemyCanKillAtPos(i, true, false)){
+                safe[i] = 0;
+            }
+        }
+        
+        var target;
+        
+        if (eNear.length == 0) {
+            target = searchPattern();
+            var chosenMove = moveToward(safe, target.x, target.y);
+            return setMessage(chosenMove);
+        } else {
+            target = eNear[0];
+            var chosenMove = moveTowardEnemy(safe, target.x, target.y);
+            return setMessage(chosenMove);
+        }
+        
+        //TODO
+        
+        for (var i = 0; i < safe.length; i++){
+            if (enemyCanKillAtPos(i, true, false)){
+                safe[i] = 0;
+            }
+        }
         
     }
 
